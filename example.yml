@@ -1,4 +1,9 @@
 modules:
+  tencent_cloud_account_balance:
+    prober: tencent_billing
+    timeout: 30s
+    tencent_billing:
+      refresh_interval: 1h
   http_2xx_example:
     prober: http
     timeout: 5s

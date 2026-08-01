@@ -89,6 +89,14 @@ var (
 	DefaultWebsocketProbe = WebsocketProbe{
 		IPProtocolFallback: true,
 	}
+
+	DefaultJustMySocksProbe = JustMySocksProbe{
+		RefreshInterval: time.Hour,
+	}
+
+	DefaultTencentBillingProbe = TencentBillingProbe{
+		RefreshInterval: time.Hour,
+	}
 )
 
 type Config struct {
@@ -294,15 +302,32 @@ func MustNewRegexp(s string) Regexp {
 }
 
 type Module struct {
-	Prober    string         `yaml:"prober,omitempty" json:"prober,omitempty"`
-	Timeout   time.Duration  `yaml:"timeout,omitempty" json:"timeout,omitempty"`
-	HTTP      HTTPProbe      `yaml:"http,omitempty" json:"http,omitzero"`
-	TCP       TCPProbe       `yaml:"tcp,omitempty" json:"tcp,omitzero"`
-	ICMP      ICMPProbe      `yaml:"icmp,omitempty" json:"icmp,omitzero"`
-	DNS       DNSProbe       `yaml:"dns,omitempty" json:"dns,omitzero"`
-	GRPC      GRPCProbe      `yaml:"grpc,omitempty" json:"grpc,omitzero"`
-	Unix      UnixProbe      `yaml:"unix,omitempty" json:"unix,omitzero"`
-	Websocket WebsocketProbe `yaml:"websocket,omitempty" json:"websocket,omitzero"`
+	Prober         string              `yaml:"prober,omitempty" json:"prober,omitempty"`
+	Timeout        time.Duration       `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+	HTTP           HTTPProbe           `yaml:"http,omitempty" json:"http,omitzero"`
+	TCP            TCPProbe            `yaml:"tcp,omitempty" json:"tcp,omitzero"`
+	ICMP           ICMPProbe           `yaml:"icmp,omitempty" json:"icmp,omitzero"`
+	DNS            DNSProbe            `yaml:"dns,omitempty" json:"dns,omitzero"`
+	GRPC           GRPCProbe           `yaml:"grpc,omitempty" json:"grpc,omitzero"`
+	Unix           UnixProbe           `yaml:"unix,omitempty" json:"unix,omitzero"`
+	Websocket      WebsocketProbe      `yaml:"websocket,omitempty" json:"websocket,omitzero"`
+	JustMySocks    JustMySocksProbe    `yaml:"justmysocks,omitempty" json:"justmysocks,omitzero"`
+	TencentBilling TencentBillingProbe `yaml:"tencent_billing,omitempty" json:"tencent_billing,omitzero"`
+}
+
+// JustMySocksProbe configures the Matrix Origin extension that reads a
+// Just My Socks traffic counter without exposing its credential-bearing URL
+// through the multi-target exporter's target parameter.
+type JustMySocksProbe struct {
+	URLFile         string        `yaml:"url_file,omitempty" json:"url_file,omitempty"`
+	RefreshInterval time.Duration `yaml:"refresh_interval,omitempty" json:"refresh_interval,omitempty"`
+}
+
+// TencentBillingProbe configures collection of the Tencent Cloud account
+// balance. Credentials are deliberately not configurable here and are read
+// from TENCENTCLOUD_SECRET_ID and TENCENTCLOUD_SECRET_KEY.
+type TencentBillingProbe struct {
+	RefreshInterval time.Duration `yaml:"refresh_interval,omitempty" json:"refresh_interval,omitempty"`
 }
 
 type HTTPProbe struct {
@@ -427,6 +452,8 @@ func (s *Config) UnmarshalYAML(unmarshal func(any) error) error {
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (s *Module) UnmarshalYAML(unmarshal func(any) error) error {
 	*s = DefaultModule
+	s.JustMySocks = DefaultJustMySocksProbe
+	s.TencentBilling = DefaultTencentBillingProbe
 	type plain Module
 	if err := unmarshal((*plain)(s)); err != nil {
 		return err
@@ -434,6 +461,19 @@ func (s *Module) UnmarshalYAML(unmarshal func(any) error) error {
 	switch s.Prober {
 	case "http", "tcp", "icmp", "dns", "grpc", "unix", "websocket":
 		// valid
+		return nil
+	case "justmysocks":
+		if strings.TrimSpace(s.JustMySocks.URLFile) == "" {
+			return errors.New("url_file must be set for Just My Socks module")
+		}
+		if s.JustMySocks.RefreshInterval <= 0 {
+			return errors.New("refresh_interval must be positive for Just My Socks module")
+		}
+		return nil
+	case "tencent_billing":
+		if s.TencentBilling.RefreshInterval <= 0 {
+			return errors.New("refresh_interval must be positive for Tencent billing module")
+		}
 		return nil
 	default:
 		// invalid

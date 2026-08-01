@@ -55,7 +55,8 @@ then a single address is selected to test, using the following logic:
 ### `<module>`
 ```yml
 
-  # The protocol over which the probe will take place (http, tcp, dns, icmp, grpc, unix).
+  # The protocol over which the probe will take place
+  # (http, tcp, dns, icmp, grpc, unix, websocket, justmysocks, tencent_billing).
   prober: <prober_string>
 
   # How long the probe will wait before giving up.
@@ -69,7 +70,39 @@ then a single address is selected to test, using the following logic:
   [ grpc: <grpc_probe> ]
   [ unix: <unix_probe> ]
   [ websocket: <websocket_probe> ]
+  [ justmysocks: <justmysocks_probe> ]
+  [ tencent_billing: <tencent_billing_probe> ]
 
+```
+
+### `<justmysocks_probe>`
+
+The `justmysocks` prober reads a credential-bearing traffic-counter URL from
+a mounted file. Only HTTPS URLs are accepted, and redirects are not followed.
+See [JUSTMYSOCKS.md](JUSTMYSOCKS.md) for deployment and metric details.
+
+```yml
+# File containing the HTTPS traffic-counter URL.
+url_file: <string>
+
+# How often to refresh the counter. Probes between refreshes return the
+# process-local cached result. Failed refreshes retry after at most five
+# minutes.
+[ refresh_interval: <duration> | default = 1h ]
+```
+
+### `<tencent_billing_probe>`
+
+The `tencent_billing` prober calls the Tencent Cloud China
+`DescribeAccountBalance` API. It reads credentials exclusively from the
+`TENCENTCLOUD_SECRET_ID` and `TENCENTCLOUD_SECRET_KEY` environment variables.
+See [docs/tencent-billing.md](docs/tencent-billing.md) for deployment and
+metric details.
+
+```yml
+# How often to call the billing API. Probes between refreshes return the
+# process-local cached result.
+[ refresh_interval: <duration> | default = 1h ]
 ```
 
 ### `<http_probe>`
