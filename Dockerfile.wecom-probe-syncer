@@ -1,0 +1,16 @@
+ARG GO_VERSION=1.25
+
+FROM golang:${GO_VERSION} AS builder
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -trimpath -o /out/wecom_probe_syncer ./cmd/wecom_probe_syncer
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /out/wecom_probe_syncer /bin/wecom_probe_syncer
+ENTRYPOINT ["/bin/wecom_probe_syncer"]
+CMD ["--config.file=/etc/wecom-probe-syncer/config.yml"]
