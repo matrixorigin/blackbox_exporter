@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"net/url"
 	"regexp"
 	"sort"
@@ -137,16 +138,14 @@ func labelsForRecord(record SheetRecord, cfg Config) (map[string]string, error) 
 		if err != nil {
 			return nil, fmt.Errorf("record %q labels are invalid: %w", record.ID, err)
 		}
-		for key, value := range parsed {
-			labels[key] = value
-		}
+		maps.Copy(labels, parsed)
 	}
 	return labels, nil
 }
 
 func parseInlineLabels(raw string) (map[string]string, error) {
 	labels := map[string]string{}
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue

@@ -145,7 +145,7 @@ func TestFetchTencentBillingBalancesDoesNotFollowRedirects(t *testing.T) {
 				"test-key",
 				time.Now(),
 			)
-			wantError := fmt.Sprintf("Tencent Cloud billing returned HTTP status %d", status)
+			wantError := fmt.Sprintf("tencent cloud billing returned HTTP status %d", status)
 			if err == nil || err.Error() != wantError {
 				t.Fatalf("error = %v, want %q", err, wantError)
 			}
@@ -165,22 +165,22 @@ func TestDecodeTencentBillingBalancesRejectsInvalidResponses(t *testing.T) {
 		{
 			name:    "invalid JSON",
 			payload: `{`,
-			error:   "Tencent Cloud billing returned invalid JSON",
+			error:   "tencent cloud billing returned invalid JSON",
 		},
 		{
 			name:    "API error",
 			payload: `{"Response":{"Error":{"Code":"UnauthorizedOperation.CamNoAuth"},"RequestId":"request-id"}}`,
-			error:   "Tencent Cloud billing API returned error UnauthorizedOperation.CamNoAuth",
+			error:   "tencent cloud billing API returned error UnauthorizedOperation.CamNoAuth",
 		},
 		{
 			name:    "missing request ID",
 			payload: strings.Replace(successfulTencentBillingResponse, `"RequestId": "test-request-id"`, `"RequestId": ""`, 1),
-			error:   "Tencent Cloud billing response is missing RequestId",
+			error:   "tencent cloud billing response is missing RequestId",
 		},
 		{
 			name:    "missing amount",
 			payload: strings.Replace(successfulTencentBillingResponse, `"RealBalance": 12345,`, "", 1),
-			error:   "Tencent Cloud billing response is missing RealBalance",
+			error:   "tencent cloud billing response is missing RealBalance",
 		},
 	}
 	for _, test := range tests {
@@ -310,7 +310,7 @@ func TestFetchTencentBillingBalancesRejectsOversizedResponse(t *testing.T) {
 		"test-key",
 		time.Now(),
 	)
-	if err == nil || err.Error() != "Tencent Cloud billing response is too large" {
+	if err == nil || err.Error() != "tencent cloud billing response is too large" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -319,7 +319,7 @@ func TestFetchTencentBillingBalancesFromEnvironmentRequiresBothCredentials(t *te
 	t.Setenv(tencentBillingSecretIDEnv, "")
 	t.Setenv(tencentBillingSecretKeyEnv, "")
 	_, err := fetchTencentBillingBalancesFromEnvironment(context.Background(), time.Now())
-	if err == nil || err.Error() != "Tencent Cloud billing credentials are not configured" {
+	if err == nil || err.Error() != "tencent cloud billing credentials are not configured" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

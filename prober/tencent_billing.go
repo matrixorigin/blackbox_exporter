@@ -151,7 +151,7 @@ func fetchTencentBillingBalancesFromEnvironment(ctx context.Context, now time.Ti
 	secretID := os.Getenv(tencentBillingSecretIDEnv)
 	secretKey := os.Getenv(tencentBillingSecretKeyEnv)
 	if secretID == "" || secretKey == "" {
-		return tencentBillingBalances{}, errors.New("Tencent Cloud billing credentials are not configured")
+		return tencentBillingBalances{}, errors.New("tencent cloud billing credentials are not configured")
 	}
 	return fetchTencentBillingBalances(
 		ctx,
@@ -194,7 +194,7 @@ func fetchTencentBillingBalances(
 	payload := []byte("{}")
 	endpointURL, err := url.Parse(endpoint)
 	if err != nil || endpointURL.Scheme != "https" || endpointURL.Host == "" {
-		return tencentBillingBalances{}, errors.New("Tencent Cloud billing endpoint is invalid")
+		return tencentBillingBalances{}, errors.New("tencent cloud billing endpoint is invalid")
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpointURL.String(), bytes.NewReader(payload))
@@ -211,9 +211,9 @@ func fetchTencentBillingBalances(
 	response, err := client.Do(request)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return tencentBillingBalances{}, errors.New("Tencent Cloud billing request timed out")
+			return tencentBillingBalances{}, errors.New("tencent cloud billing request timed out")
 		}
-		return tencentBillingBalances{}, errors.New("Tencent Cloud billing request failed")
+		return tencentBillingBalances{}, errors.New("tencent cloud billing request failed")
 	}
 	defer response.Body.Close()
 
@@ -222,10 +222,10 @@ func fetchTencentBillingBalances(
 		return tencentBillingBalances{}, errors.New("could not read Tencent Cloud billing response")
 	}
 	if len(body) > tencentBillingMaxResponseBytes {
-		return tencentBillingBalances{}, errors.New("Tencent Cloud billing response is too large")
+		return tencentBillingBalances{}, errors.New("tencent cloud billing response is too large")
 	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return tencentBillingBalances{}, fmt.Errorf("Tencent Cloud billing returned HTTP status %d", response.StatusCode)
+		return tencentBillingBalances{}, fmt.Errorf("tencent cloud billing returned HTTP status %d", response.StatusCode)
 	}
 
 	return decodeTencentBillingBalances(bytes.NewReader(body))
@@ -235,16 +235,16 @@ func decodeTencentBillingBalances(reader io.Reader) (tencentBillingBalances, err
 	var payload tencentBillingAPIResponse
 	decoder := json.NewDecoder(reader)
 	if err := decoder.Decode(&payload); err != nil {
-		return tencentBillingBalances{}, errors.New("Tencent Cloud billing returned invalid JSON")
+		return tencentBillingBalances{}, errors.New("tencent cloud billing returned invalid JSON")
 	}
 	if payload.Response.Error != nil {
 		if payload.Response.Error.Code == "" {
-			return tencentBillingBalances{}, errors.New("Tencent Cloud billing API returned an error")
+			return tencentBillingBalances{}, errors.New("tencent cloud billing API returned an error")
 		}
-		return tencentBillingBalances{}, fmt.Errorf("Tencent Cloud billing API returned error %s", payload.Response.Error.Code)
+		return tencentBillingBalances{}, fmt.Errorf("tencent cloud billing API returned error %s", payload.Response.Error.Code)
 	}
 	if payload.Response.RequestID == "" {
-		return tencentBillingBalances{}, errors.New("Tencent Cloud billing response is missing RequestId")
+		return tencentBillingBalances{}, errors.New("tencent cloud billing response is missing RequestId")
 	}
 
 	values := []struct {
@@ -263,10 +263,10 @@ func decodeTencentBillingBalances(reader io.Reader) (tencentBillingBalances, err
 	}
 	for _, value := range values {
 		if value.value == nil {
-			return tencentBillingBalances{}, fmt.Errorf("Tencent Cloud billing response is missing %s", value.name)
+			return tencentBillingBalances{}, fmt.Errorf("tencent cloud billing response is missing %s", value.name)
 		}
 		if math.IsNaN(*value.value) || math.IsInf(*value.value, 0) {
-			return tencentBillingBalances{}, fmt.Errorf("Tencent Cloud billing response has invalid %s", value.name)
+			return tencentBillingBalances{}, fmt.Errorf("tencent cloud billing response has invalid %s", value.name)
 		}
 	}
 
