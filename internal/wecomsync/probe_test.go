@@ -158,19 +158,77 @@ func TestRecordsToProbesPrefixesNamesWithSheetIDForMultiSheetConfig(t *testing.T
 	}
 }
 
-func TestRecordsToProbesRejectsUnsupportedModule(t *testing.T) {
+func TestRecordsToProbesSkipsInvalidRows(t *testing.T) {
 	cfg := testConfig()
-	_, err := RecordsToProbes([]SheetRecord{{
-		ID: "rec-1",
-		Fields: map[string]string{
-			"enabled": "true",
-			"name":    "bad",
-			"module":  "smtp",
-			"target":  "example.com:25",
+	probes, err := RecordsToProbes([]SheetRecord{
+		{
+			ID: "bad-module",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "bad",
+				"module":  "smtp",
+				"target":  "example.com:25",
+			},
 		},
-	}}, cfg)
-	if err == nil {
-		t.Fatal("expected unsupported module error")
+		{
+			ID: "empty-target",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "empty",
+				"module":  "tcp_connect",
+			},
+		},
+		{
+			ID: "valid",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "valid",
+				"module":  "tcp_connect",
+				"target":  "example.com:443",
+			},
+		},
+	}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) != 1 {
+		t.Fatalf("len(probes) = %d, want 1", len(probes))
+	}
+	if probes[0].Name != "wecom-valid" {
+		t.Fatalf("name = %q", probes[0].Name)
+	}
+}
+
+func TestRecordsToProbesSkipsDuplicateGeneratedNames(t *testing.T) {
+	cfg := testConfig()
+	probes, err := RecordsToProbes([]SheetRecord{
+		{
+			ID: "rec-1",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "mineru",
+				"module":  "tcp_connect",
+				"target":  "mineru-gpu.moi.shanghai.idc.matrixorigin.cn:30443",
+			},
+		},
+		{
+			ID: "rec-2",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "mineru",
+				"module":  "tcp_connect",
+				"target":  "mineru-gpu.moi.shanghai.idc.matrixorigin.cn:30443",
+			},
+		},
+	}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) != 1 {
+		t.Fatalf("len(probes) = %d, want 1", len(probes))
+	}
+	if probes[0].Name != "wecom-mineru" {
+		t.Fatalf("name = %q", probes[0].Name)
 	}
 }
 

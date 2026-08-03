@@ -42,10 +42,10 @@ func RecordsToProbes(records []SheetRecord, cfg Config) ([]ProbeSpec, error) {
 		}
 		probe, err := recordToProbe(record, cfg, allowed)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		if _, ok := seen[probe.Name]; ok {
-			return nil, fmt.Errorf("duplicate generated probe name %q", probe.Name)
+			continue
 		}
 		seen[probe.Name] = struct{}{}
 		probes = append(probes, probe)
