@@ -34,3 +34,21 @@ func TestNormalizeRecordExtractsTextFromSmartSheetValues(t *testing.T) {
 		t.Fatalf("port = %q", record.Fields["port"])
 	}
 }
+
+func TestNormalizeRecordConcatenatesRichTextFragments(t *testing.T) {
+	record := NormalizeRecord(map[string]any{
+		"record_id": "rec-url",
+		"values": map[string]any{
+			"target": []any{
+				map[string]any{"text": "https://"},
+				map[string]any{"text": "bgem3.model.shanghai.idc.matrixorigin.cn"},
+				map[string]any{"text": ":30443"},
+			},
+		},
+	})
+
+	want := "https://bgem3.model.shanghai.idc.matrixorigin.cn:30443"
+	if record.Fields["target"] != want {
+		t.Fatalf("target = %q, want %q", record.Fields["target"], want)
+	}
+}

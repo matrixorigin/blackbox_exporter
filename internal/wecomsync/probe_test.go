@@ -120,19 +120,115 @@ func TestRecordsToProbesUsesOptionalOverridesWhenPresent(t *testing.T) {
 	}
 }
 
-func TestRecordsToProbesRejectsUnsupportedModule(t *testing.T) {
+func TestRecordsToProbesPrefixesNamesWithSheetIDForMultiSheetConfig(t *testing.T) {
 	cfg := testConfig()
-	_, err := RecordsToProbes([]SheetRecord{{
-		ID: "rec-1",
-		Fields: map[string]string{
-			"enabled": "true",
-			"name":    "bad",
-			"module":  "smtp",
-			"target":  "example.com:25",
+	cfg.WeCom.SheetID = ""
+	cfg.WeCom.SheetIDs = []string{"internal", "public"}
+
+	probes, err := RecordsToProbes([]SheetRecord{
+		{
+			ID:      "rec-1",
+			SheetID: "internal",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "baai-bge-m3",
+				"module":  "tcp_connect",
+				"target":  "baai-bge-m3.ai.svc.cluster.local:8080",
+			},
 		},
-	}}, cfg)
-	if err == nil {
-		t.Fatal("expected unsupported module error")
+		{
+			ID:      "rec-2",
+			SheetID: "public",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "baai-bge-m3",
+				"module":  "tcp_connect",
+				"target":  "bgem3.model.shanghai.idc.matrixorigin.cn:443",
+			},
+		},
+	}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) != 2 {
+		t.Fatalf("len(probes) = %d, want 2", len(probes))
+	}
+	if probes[0].Name != "wecom-internal-baai-bge-m3" || probes[1].Name != "wecom-public-baai-bge-m3" {
+		t.Fatalf("probe names = %q, %q", probes[0].Name, probes[1].Name)
+	}
+}
+
+func TestRecordsToProbesSkipsInvalidRows(t *testing.T) {
+	cfg := testConfig()
+	probes, err := RecordsToProbes([]SheetRecord{
+		{
+			ID: "bad-module",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "bad",
+				"module":  "smtp",
+				"target":  "example.com:25",
+			},
+		},
+		{
+			ID: "empty-target",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "empty",
+				"module":  "tcp_connect",
+			},
+		},
+		{
+			ID: "valid",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "valid",
+				"module":  "tcp_connect",
+				"target":  "example.com:443",
+			},
+		},
+	}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) != 1 {
+		t.Fatalf("len(probes) = %d, want 1", len(probes))
+	}
+	if probes[0].Name != "wecom-valid" {
+		t.Fatalf("name = %q", probes[0].Name)
+	}
+}
+
+func TestRecordsToProbesSkipsDuplicateGeneratedNames(t *testing.T) {
+	cfg := testConfig()
+	probes, err := RecordsToProbes([]SheetRecord{
+		{
+			ID: "rec-1",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "mineru",
+				"module":  "tcp_connect",
+				"target":  "mineru-gpu.moi.shanghai.idc.matrixorigin.cn:30443",
+			},
+		},
+		{
+			ID: "rec-2",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "mineru",
+				"module":  "tcp_connect",
+				"target":  "mineru-gpu.moi.shanghai.idc.matrixorigin.cn:30443",
+			},
+		},
+	}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) != 1 {
+		t.Fatalf("len(probes) = %d, want 1", len(probes))
+	}
+	if probes[0].Name != "wecom-mineru" {
+		t.Fatalf("name = %q", probes[0].Name)
 	}
 }
 

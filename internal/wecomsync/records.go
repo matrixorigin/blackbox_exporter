@@ -10,8 +10,9 @@ import (
 )
 
 type SheetRecord struct {
-	ID     string
-	Fields map[string]string
+	SheetID string
+	ID      string
+	Fields  map[string]string
 }
 
 func NormalizeRecord(raw map[string]any) SheetRecord {
@@ -60,7 +61,7 @@ func cellText(v any) string {
 				parts = append(parts, text)
 			}
 		}
-		return strings.Join(parts, ",")
+		return strings.TrimSpace(strings.Join(parts, ""))
 	case map[string]any:
 		for _, key := range []string{"text", "value", "title", "name", "plain_text", "url"} {
 			if text := cellText(value[key]); text != "" {

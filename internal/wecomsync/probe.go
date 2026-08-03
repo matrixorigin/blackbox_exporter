@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"net/url"
 	"regexp"
 	"sort"
@@ -42,10 +43,10 @@ func RecordsToProbes(records []SheetRecord, cfg Config) ([]ProbeSpec, error) {
 		}
 		probe, err := recordToProbe(record, cfg, allowed)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		if _, ok := seen[probe.Name]; ok {
-			return nil, fmt.Errorf("duplicate generated probe name %q", probe.Name)
+			continue
 		}
 		seen[probe.Name] = struct{}{}
 		probes = append(probes, probe)
@@ -92,7 +93,11 @@ func recordToProbe(record SheetRecord, cfg Config, allowed map[string]struct{}) 
 	if nameSource == "" {
 		nameSource = target
 	}
-	name := resourceName(cfg.Kubernetes.NamePrefix, nameSource, target)
+	namePrefix := cfg.Kubernetes.NamePrefix
+	if len(cfg.WeComSheetIDs()) > 1 && strings.TrimSpace(record.SheetID) != "" {
+		namePrefix = strings.TrimSuffix(namePrefix, "-") + "-" + record.SheetID
+	}
+	name := resourceName(namePrefix, nameSource, target)
 	jobName := strings.TrimSpace(record.Fields[cfg.Columns.JobName])
 	if jobName == "" {
 		jobName = name
@@ -133,16 +138,14 @@ func labelsForRecord(record SheetRecord, cfg Config) (map[string]string, error) 
 		if err != nil {
 			return nil, fmt.Errorf("record %q labels are invalid: %w", record.ID, err)
 		}
-		for key, value := range parsed {
-			labels[key] = value
-		}
+		maps.Copy(labels, parsed)
 	}
 	return labels, nil
 }
 
 func parseInlineLabels(raw string) (map[string]string, error) {
 	labels := map[string]string{}
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue

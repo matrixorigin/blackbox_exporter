@@ -165,7 +165,7 @@ func decodeJustMySocksNonNegativeNumber(raw json.RawMessage) (float64, error) {
 	if len(raw) == 0 {
 		return 0, errors.New("value is missing")
 	}
-	var value interface{}
+	var value any
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	if err := decoder.Decode(&value); err != nil {
