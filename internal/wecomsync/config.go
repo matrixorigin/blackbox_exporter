@@ -34,16 +34,17 @@ type Config struct {
 }
 
 type WeComConfig struct {
-	BaseURL        string `yaml:"base_url"`
-	CorpID         string `yaml:"corpid"`
-	CorpIDFile     string `yaml:"corpid_file"`
-	CorpSecret     string `yaml:"corpsecret"`
-	CorpSecretFile string `yaml:"corpsecret_file"`
-	DocID          string `yaml:"docid"`
-	SheetID        string `yaml:"sheet_id"`
-	ViewID         string `yaml:"view_id"`
-	KeyType        string `yaml:"key_type"`
-	PageSize       int    `yaml:"page_size"`
+	BaseURL        string   `yaml:"base_url"`
+	CorpID         string   `yaml:"corpid"`
+	CorpIDFile     string   `yaml:"corpid_file"`
+	CorpSecret     string   `yaml:"corpsecret"`
+	CorpSecretFile string   `yaml:"corpsecret_file"`
+	DocID          string   `yaml:"docid"`
+	SheetID        string   `yaml:"sheet_id"`
+	SheetIDs       []string `yaml:"sheet_ids"`
+	ViewID         string   `yaml:"view_id"`
+	KeyType        string   `yaml:"key_type"`
+	PageSize       int      `yaml:"page_size"`
 }
 
 type KubernetesConfig struct {
@@ -169,8 +170,8 @@ func (c Config) Validate() error {
 	if strings.TrimSpace(c.WeCom.DocID) == "" {
 		missing = append(missing, "wecom.docid")
 	}
-	if strings.TrimSpace(c.WeCom.SheetID) == "" {
-		missing = append(missing, "wecom.sheet_id")
+	if len(c.WeComSheetIDs()) == 0 {
+		missing = append(missing, "wecom.sheet_id or wecom.sheet_ids")
 	}
 	if strings.TrimSpace(c.Kubernetes.ProberURL) == "" {
 		missing = append(missing, "kubernetes.prober_url")
@@ -191,6 +192,23 @@ func (c Config) Validate() error {
 		return fmt.Errorf("defaults.scrape_timeout is invalid: %w", err)
 	}
 	return nil
+}
+
+func (c Config) WeComSheetIDs() []string {
+	seen := map[string]struct{}{}
+	var sheetIDs []string
+	for _, sheetID := range append([]string{c.WeCom.SheetID}, c.WeCom.SheetIDs...) {
+		sheetID = strings.TrimSpace(sheetID)
+		if sheetID == "" {
+			continue
+		}
+		if _, ok := seen[sheetID]; ok {
+			continue
+		}
+		seen[sheetID] = struct{}{}
+		sheetIDs = append(sheetIDs, sheetID)
+	}
+	return sheetIDs
 }
 
 func (c Config) WeComCredentials() (corpID, corpSecret string, err error) {

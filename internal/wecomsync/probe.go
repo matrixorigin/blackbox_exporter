@@ -92,7 +92,11 @@ func recordToProbe(record SheetRecord, cfg Config, allowed map[string]struct{}) 
 	if nameSource == "" {
 		nameSource = target
 	}
-	name := resourceName(cfg.Kubernetes.NamePrefix, nameSource, target)
+	namePrefix := cfg.Kubernetes.NamePrefix
+	if len(cfg.WeComSheetIDs()) > 1 && strings.TrimSpace(record.SheetID) != "" {
+		namePrefix = strings.TrimSuffix(namePrefix, "-") + "-" + record.SheetID
+	}
+	name := resourceName(namePrefix, nameSource, target)
 	jobName := strings.TrimSpace(record.Fields[cfg.Columns.JobName])
 	if jobName == "" {
 		jobName = name

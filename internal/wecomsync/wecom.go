@@ -21,6 +21,7 @@ type WeComClient struct {
 	CorpSecret string
 	DocID      string
 	SheetID    string
+	SheetIDs   []string
 	ViewID     string
 	KeyType    string
 	PageSize   int
@@ -38,6 +39,7 @@ func NewWeComClient(cfg Config) (*WeComClient, error) {
 		CorpSecret: corpSecret,
 		DocID:      cfg.WeCom.DocID,
 		SheetID:    cfg.WeCom.SheetID,
+		SheetIDs:   cfg.WeComSheetIDs(),
 		ViewID:     cfg.WeCom.ViewID,
 		KeyType:    cfg.WeCom.KeyType,
 		PageSize:   cfg.WeCom.PageSize,
@@ -50,13 +52,21 @@ func (c *WeComClient) Records(ctx context.Context) ([]SheetRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawRecords, err := c.smartSheetRecords(ctx, token)
-	if err != nil {
-		return nil, err
+	sheetIDs := c.SheetIDs
+	if len(sheetIDs) == 0 && strings.TrimSpace(c.SheetID) != "" {
+		sheetIDs = []string{strings.TrimSpace(c.SheetID)}
 	}
-	records := make([]SheetRecord, 0, len(rawRecords))
-	for _, raw := range rawRecords {
-		records = append(records, NormalizeRecord(raw))
+	var records []SheetRecord
+	for _, sheetID := range sheetIDs {
+		rawRecords, err := c.smartSheetRecords(ctx, token, sheetID)
+		if err != nil {
+			return nil, err
+		}
+		for _, raw := range rawRecords {
+			record := NormalizeRecord(raw)
+			record.SheetID = sheetID
+			records = append(records, record)
+		}
 	}
 	return records, nil
 }
@@ -88,7 +98,7 @@ func (c *WeComClient) accessToken(ctx context.Context) (string, error) {
 	return resp.AccessToken, nil
 }
 
-func (c *WeComClient) smartSheetRecords(ctx context.Context, token string) ([]map[string]any, error) {
+func (c *WeComClient) smartSheetRecords(ctx context.Context, token, sheetID string) ([]map[string]any, error) {
 	var all []map[string]any
 	offset := 0
 	limit := c.PageSize
@@ -96,7 +106,7 @@ func (c *WeComClient) smartSheetRecords(ctx context.Context, token string) ([]ma
 		limit = defaultPageSize
 	}
 	for {
-		page, hasMore, nextOffset, err := c.smartSheetRecordsPage(ctx, token, offset, limit)
+		page, hasMore, nextOffset, err := c.smartSheetRecordsPage(ctx, token, sheetID, offset, limit)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +122,7 @@ func (c *WeComClient) smartSheetRecords(ctx context.Context, token string) ([]ma
 	}
 }
 
-func (c *WeComClient) smartSheetRecordsPage(ctx context.Context, token string, offset, limit int) ([]map[string]any, bool, int, error) {
+func (c *WeComClient) smartSheetRecordsPage(ctx context.Context, token, sheetID string, offset, limit int) ([]map[string]any, bool, int, error) {
 	u, err := url.Parse(c.BaseURL + "/cgi-bin/wedoc/smartsheet/get_records")
 	if err != nil {
 		return nil, false, 0, err
@@ -123,7 +133,7 @@ func (c *WeComClient) smartSheetRecordsPage(ctx context.Context, token string, o
 
 	body := map[string]any{
 		"docid":    c.DocID,
-		"sheet_id": c.SheetID,
+		"sheet_id": sheetID,
 		"key_type": c.KeyType,
 		"offset":   offset,
 		"limit":    limit,

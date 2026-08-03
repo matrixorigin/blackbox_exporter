@@ -4,7 +4,9 @@ wecom:
   corpid_file: /etc/wecom-probe-syncer/secrets/corpid
   corpsecret_file: /etc/wecom-probe-syncer/secrets/corpsecret
   docid: "replace-with-wecom-document-id"
-  sheet_id: "replace-with-smart-sheet-id"
+  sheet_ids:
+    - "replace-with-smart-sheet-id"
+    - "replace-with-another-smart-sheet-id"
   key_type: CELL_VALUE_KEY_TYPE_FIELD_TITLE
   page_size: 100
 

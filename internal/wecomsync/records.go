@@ -10,8 +10,9 @@ import (
 )
 
 type SheetRecord struct {
-	ID     string
-	Fields map[string]string
+	SheetID string
+	ID      string
+	Fields  map[string]string
 }
 
 func NormalizeRecord(raw map[string]any) SheetRecord {

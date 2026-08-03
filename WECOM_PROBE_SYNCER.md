@@ -47,6 +47,12 @@ missing or empty, defaults are used:
 
 Extra label columns can be configured with `columns.label_columns`.
 
+One document can contain multiple smart sheets. Configure `wecom.sheet_ids` to
+sync all of them with one syncer. The legacy single `wecom.sheet_id` field is
+still supported. When multiple sheets are configured, generated Probe resource
+names include the source sheet ID, so identical `name` values in different
+sheets do not collide.
+
 Example rows:
 
 | enabled | module | target |
@@ -155,7 +161,8 @@ data:
       corpid_file: /etc/wecom-probe-syncer/secrets/corpid
       corpsecret_file: /etc/wecom-probe-syncer/secrets/corpsecret
       docid: replace-with-docid
-      sheet_id: replace-with-sheet-id
+      sheet_ids:
+        - replace-with-sheet-id
     kubernetes:
       namespace: mo-ob
       prober_url: ai-vllm-blackbox-exporter.mo-ob.svc:9115

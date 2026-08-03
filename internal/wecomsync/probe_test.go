@@ -120,6 +120,44 @@ func TestRecordsToProbesUsesOptionalOverridesWhenPresent(t *testing.T) {
 	}
 }
 
+func TestRecordsToProbesPrefixesNamesWithSheetIDForMultiSheetConfig(t *testing.T) {
+	cfg := testConfig()
+	cfg.WeCom.SheetID = ""
+	cfg.WeCom.SheetIDs = []string{"internal", "public"}
+
+	probes, err := RecordsToProbes([]SheetRecord{
+		{
+			ID:      "rec-1",
+			SheetID: "internal",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "baai-bge-m3",
+				"module":  "tcp_connect",
+				"target":  "baai-bge-m3.ai.svc.cluster.local:8080",
+			},
+		},
+		{
+			ID:      "rec-2",
+			SheetID: "public",
+			Fields: map[string]string{
+				"enabled": "true",
+				"name":    "baai-bge-m3",
+				"module":  "tcp_connect",
+				"target":  "bgem3.model.shanghai.idc.matrixorigin.cn:443",
+			},
+		},
+	}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) != 2 {
+		t.Fatalf("len(probes) = %d, want 2", len(probes))
+	}
+	if probes[0].Name != "wecom-internal-baai-bge-m3" || probes[1].Name != "wecom-public-baai-bge-m3" {
+		t.Fatalf("probe names = %q, %q", probes[0].Name, probes[1].Name)
+	}
+}
+
 func TestRecordsToProbesRejectsUnsupportedModule(t *testing.T) {
 	cfg := testConfig()
 	_, err := RecordsToProbes([]SheetRecord{{
