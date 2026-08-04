@@ -39,9 +39,10 @@ type cachingResolver struct {
 	ttl      time.Duration
 	now      func() time.Time
 
-	mu      sync.RWMutex
-	entries map[dnsCacheKey]dnsCacheEntry
-	group   singleflight.Group
+	mu          sync.RWMutex
+	entries     map[dnsCacheKey]dnsCacheEntry
+	nextCleanup time.Time
+	group       singleflight.Group
 }
 
 func newCachingResolver(upstream ipResolver, ttl time.Duration) *cachingResolver {
@@ -123,10 +124,13 @@ func (r *cachingResolver) store(key dnsCacheKey, entry dnsCacheEntry) {
 	now := r.now()
 	entry.expiresAt = now.Add(r.ttl)
 	r.mu.Lock()
-	for cachedKey, cachedEntry := range r.entries {
-		if !now.Before(cachedEntry.expiresAt) {
-			delete(r.entries, cachedKey)
+	if r.nextCleanup.IsZero() || !now.Before(r.nextCleanup) {
+		for cachedKey, cachedEntry := range r.entries {
+			if !now.Before(cachedEntry.expiresAt) {
+				delete(r.entries, cachedKey)
+			}
 		}
+		r.nextCleanup = now.Add(r.ttl)
 	}
 	r.entries[key] = entry
 	r.mu.Unlock()

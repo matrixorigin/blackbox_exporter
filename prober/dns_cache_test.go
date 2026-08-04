@@ -233,3 +233,36 @@ func TestCachingResolverSeparatesLookupMethodsAndProtocols(t *testing.T) {
 		t.Fatalf("upstream calls = LookupIP:%d LookupIPAddr:%d, want 2 and 1", ipCalls, addrCalls)
 	}
 }
+
+func TestCachingResolverRunsCleanupAtMostOncePerTTL(t *testing.T) {
+	now := time.Unix(1_000, 0)
+	resolver := newCachingResolver(&countingResolver{}, time.Minute)
+	resolver.now = func() time.Time { return now }
+	firstKey := dnsCacheKey{kind: "ipaddr", hostname: "first.example"}
+	secondKey := dnsCacheKey{kind: "ipaddr", hostname: "second.example"}
+	thirdKey := dnsCacheKey{kind: "ipaddr", hostname: "third.example"}
+
+	resolver.store(firstKey, dnsCacheEntry{})
+	firstCleanup := now.Add(time.Minute)
+	if !resolver.nextCleanup.Equal(firstCleanup) {
+		t.Fatalf("next cleanup = %s, want %s", resolver.nextCleanup, firstCleanup)
+	}
+
+	now = now.Add(30 * time.Second)
+	resolver.store(secondKey, dnsCacheEntry{})
+	if !resolver.nextCleanup.Equal(firstCleanup) {
+		t.Fatalf("store rescheduled cleanup to %s before TTL elapsed", resolver.nextCleanup)
+	}
+
+	now = firstCleanup
+	resolver.store(thirdKey, dnsCacheEntry{})
+	if !resolver.nextCleanup.Equal(now.Add(time.Minute)) {
+		t.Fatalf("next cleanup = %s, want %s", resolver.nextCleanup, now.Add(time.Minute))
+	}
+	if _, ok := resolver.entries[firstKey]; ok {
+		t.Fatal("expired first entry survived scheduled cleanup")
+	}
+	if _, ok := resolver.entries[secondKey]; !ok {
+		t.Fatal("unexpired second entry was removed")
+	}
+}
