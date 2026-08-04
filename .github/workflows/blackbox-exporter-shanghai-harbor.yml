@@ -3,7 +3,7 @@ name: Build blackbox_exporter image
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 

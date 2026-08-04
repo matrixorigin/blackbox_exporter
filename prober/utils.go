@@ -19,6 +19,7 @@ import (
 	"hash/fnv"
 	"log/slog"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,6 +28,29 @@ import (
 var protocolToGauge = map[string]float64{
 	"ip4": 4,
 	"ip6": 6,
+}
+
+var (
+	targetResolverMu sync.RWMutex
+	targetResolver   ipResolver = net.DefaultResolver
+)
+
+// ConfigureDNSCache replaces the target resolver with an optional positive
+// cache. It must be called before the exporter starts serving probes.
+func ConfigureDNSCache(ttl time.Duration) {
+	targetResolverMu.Lock()
+	defer targetResolverMu.Unlock()
+	if ttl <= 0 {
+		targetResolver = net.DefaultResolver
+		return
+	}
+	targetResolver = newCachingResolver(net.DefaultResolver, ttl)
+}
+
+func configuredTargetResolver() ipResolver {
+	targetResolverMu.RLock()
+	defer targetResolverMu.RUnlock()
+	return targetResolver
 }
 
 // Returns the IP for the IPProtocol and lookup time.
@@ -66,7 +90,7 @@ func chooseProtocol(ctx context.Context, IPProtocol string, fallbackIPProtocol b
 		probeDNSLookupTimeSeconds.Add(lookupTime)
 	}()
 
-	resolver := &net.Resolver{}
+	resolver := configuredTargetResolver()
 	if !fallbackIPProtocol {
 		ips, err := resolver.LookupIP(ctx, IPProtocol, target)
 		if err == nil {

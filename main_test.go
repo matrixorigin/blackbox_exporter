@@ -13,7 +13,35 @@
 
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/alecthomas/kingpin/v2"
+)
+
+func TestDNSCacheTTLFlag(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want time.Duration
+	}{
+		{name: "disabled by default", want: 0},
+		{name: "explicit duration", args: []string{"--dns.cache-ttl=60s"}, want: time.Minute},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			app := kingpin.New("blackbox_exporter", "test")
+			ttl := addDNSCacheTTLFlag(app)
+			if _, err := app.Parse(tc.args); err != nil {
+				t.Fatalf("parse flags: %v", err)
+			}
+			if *ttl != tc.want {
+				t.Fatalf("dns cache TTL = %s, want %s", *ttl, tc.want)
+			}
+		})
+	}
+}
 
 func TestComputeExternalURL(t *testing.T) {
 	tests := []struct {

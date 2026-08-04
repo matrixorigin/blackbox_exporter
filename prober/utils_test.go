@@ -143,15 +143,32 @@ func generateSelfSignedCertificateWithPrivateKey(template *x509.Certificate, pri
 	return cert, pemCert
 }
 
+type protocolTestResolver struct{}
+
+func (protocolTestResolver) LookupIP(_ context.Context, _, host string) ([]net.IP, error) {
+	return nil, &net.DNSError{Err: "no suitable address", Name: host, IsNotFound: true}
+}
+
+func (protocolTestResolver) LookupIPAddr(context.Context, string) ([]net.IPAddr, error) {
+	return []net.IPAddr{{IP: net.ParseIP("2001:db8::1")}}, nil
+}
+
 func TestChooseProtocol(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping network dependent test")
-	}
+	targetResolverMu.Lock()
+	previousResolver := targetResolver
+	targetResolver = protocolTestResolver{}
+	targetResolverMu.Unlock()
+	t.Cleanup(func() {
+		targetResolverMu.Lock()
+		targetResolver = previousResolver
+		targetResolverMu.Unlock()
+	})
+
 	ctx := context.Background()
 	registry := prometheus.NewPedanticRegistry()
 	logger := promslog.New(&promslog.Config{})
 
-	ip, _, err := chooseProtocol(ctx, "ip4", true, "ipv6.google.com", registry, logger)
+	ip, _, err := chooseProtocol(ctx, "ip4", true, "example.com", registry, logger)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,7 +178,7 @@ func TestChooseProtocol(t *testing.T) {
 
 	registry = prometheus.NewPedanticRegistry()
 
-	ip, _, err = chooseProtocol(ctx, "ip4", false, "ipv6.google.com", registry, logger)
+	ip, _, err = chooseProtocol(ctx, "ip4", false, "example.com", registry, logger)
 	if err != nil && !err.(*net.DNSError).IsNotFound {
 		t.Error(err)
 	} else if err == nil {
