@@ -145,7 +145,7 @@ func generateSelfSignedCertificateWithPrivateKey(template *x509.Certificate, pri
 
 type protocolTestResolver struct{}
 
-func (protocolTestResolver) LookupIP(_ context.Context, network, host string) ([]net.IP, error) {
+func (protocolTestResolver) LookupIP(_ context.Context, _, host string) ([]net.IP, error) {
 	return nil, &net.DNSError{Err: "no suitable address", Name: host, IsNotFound: true}
 }
 
